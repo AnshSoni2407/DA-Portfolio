@@ -1,0 +1,528 @@
+/* eslint-disable react-refresh/only-export-components */
+import { useRef, useState } from "react";
+import type { MediaStore } from "../types";
+import { evProjectDashboard } from "../data/evDashboardData";
+
+interface ProjectsProps {
+  mediaStore: MediaStore;
+  isOwner: boolean;
+  onOpenLightbox: (pid: number) => void;
+  onOpenManage: (pid: number, name: string) => void;
+  onOpenInsights: (pid: number) => void;
+  limit?: number;
+  onViewAll?: () => void;
+}
+
+export type AccentTone = "accent" | "accent2" | "accent3" | "accent4";
+
+export interface ProjectLink {
+  label: string;
+  href: string;
+  ghost?: boolean;
+}
+
+export interface ProjectMetric {
+  label: string;
+  value: string;
+  tone?: AccentTone;
+  icon?: string;
+}
+
+export interface ProjectBarDatum {
+  label: string;
+  labelSuffix?: string;
+  detail: string;
+  barPercent: number;
+  tone?: AccentTone;
+}
+
+export interface ProjectLinePoint {
+  label: string;
+  value: number;
+  displayValue: string;
+}
+
+export interface ProjectLineSummary {
+  label: string;
+  value: string;
+  tone?: AccentTone;
+}
+
+interface ProjectDashboardSectionBase {
+  title: string;
+  footnote?: string;
+  tone?: AccentTone;
+}
+
+interface DashboardContent {
+  metrics?: ProjectMetric[];
+  gridSections?: ProjectDashboardSection[];
+  wideSections?: ProjectDashboardSection[];
+  layout?: "grid-first" | "wide-first";
+}
+
+export type ProjectDashboardContent = DashboardContent;
+
+export interface ProjectDashboardResolverContext {
+  selectedState: string;
+  activeVariantKey: string;
+  fallbackContent: ProjectDashboardContent;
+}
+
+export interface ProjectBarSection extends ProjectDashboardSectionBase {
+  kind: "bars";
+  items: ProjectBarDatum[];
+  compact?: boolean;
+}
+
+export interface ProjectLineSection extends ProjectDashboardSectionBase {
+  kind: "line";
+  points: ProjectLinePoint[];
+  summary?: ProjectLineSummary[];
+  xAxisLabel?: string;
+  yAxisLabels?: string[];
+}
+
+export interface ProjectColumnDatum {
+  label: string;
+  value: number;
+  displayValue: string;
+  tone?: AccentTone;
+}
+
+export interface ProjectColumnSection extends ProjectDashboardSectionBase {
+  kind: "columns";
+  items: ProjectColumnDatum[];
+  xAxisLabel?: string;
+  yAxisLabels?: string[];
+}
+
+export interface ProjectDonutDatum {
+  label: string;
+  value: number;
+  displayValue: string;
+  tone?: AccentTone;
+  isEmphasized?: boolean;
+}
+
+export interface ProjectDonutSection extends ProjectDashboardSectionBase {
+  kind: "donut";
+  segments: ProjectDonutDatum[];
+  legendTitle?: string;
+  totalLabel?: string;
+  totalDisplayValue?: string;
+}
+
+export type ProjectDashboardSection =
+  | ProjectBarSection
+  | ProjectLineSection
+  | ProjectColumnSection
+  | ProjectDonutSection;
+
+export interface ProjectDashboardVariant extends DashboardContent {
+  key: string;
+  label: string;
+}
+
+export interface ProjectDashboard extends DashboardContent {
+  badge: string;
+  heading: string;
+  filtersLabel?: string;
+  variants?: ProjectDashboardVariant[];
+  helperText?: string;
+  stateFilter?: {
+    label: string;
+    options: string[];
+    defaultValue?: string;
+  };
+  resolveContent?: (
+    context: ProjectDashboardResolverContext,
+  ) => ProjectDashboardContent;
+}
+
+export interface ProjectInsightsContent {
+  overview: string;
+  technologies: string[];
+  challenges: string;
+  outcomes: string;
+  dashboard?: ProjectDashboard;
+}
+
+export interface Project {
+  id: number;
+  featured: boolean;
+  icon: string;
+  iconClass: string;
+  tag: string;
+  name: string;
+  desc: string;
+  stack: string[];
+  links: ProjectLink[];
+  insights: ProjectInsightsContent;
+}
+
+const projects: Project[] = [
+  {
+    id: 0,
+    featured: true,
+    icon: "⚡",
+    iconClass: "bg-accent2/10",
+    tag: "Data Analytics Project",
+    name: "The Rise of Electric Vehicles in India",
+    desc: "Built an end-to-end Power BI dashboard to analyze the EV transition in India (2015-2024). Focused on adoption patterns, category shifts, and manufacturer leadership.",
+    stack: ["Power BI", "SQL", "Excel", "DAX"],
+    links: [],
+    insights: {
+      overview:
+        "A comprehensive analysis of the electric vehicle market in India, aiming to uncover growth trends, state-wise adoption rates, and the shift in consumer preferences between 2015 and 2024.",
+      technologies: [
+        "Power BI for dynamic data visualization and dashboarding",
+        "SQL for data extraction and cleaning",
+        "Excel for initial data exploration",
+        "DAX for complex calculated measures",
+      ],
+      challenges:
+        "Handling missing geographic data across various states required mapping custom regions. Optimizing DAX queries for a large dataset (over 1M rows) to ensure the dashboard remained responsive was a significant hurdle. Furthermore, aligning public data sources with differing formats demanded rigorous ETL processes.",
+      outcomes: `
+• EV adoption remained minimal until 2019, followed by a sharp acceleration post-2021, indicating a strong policy and infrastructure push.
+
+• 2023 marks the peak adoption year, while 2024 shows a controlled slowdown rather than decline.
+
+• Over 95% of EV adoption comes from two- and three-wheelers, highlighting India’s focus on affordable and commercial mobility rather than passenger cars.
+
+• Market leadership is concentrated among a few manufacturers, suggesting early consolidation in the EV ecosystem.
+`,
+      dashboard: evProjectDashboard,
+    },
+  },
+  {
+    id: 1,
+    featured: false,
+    icon: "🏥",
+    iconClass: "bg-accent/10",
+    tag: "SQL Analytics",
+    name: "Hospital Management Analytics",
+    desc: "Designed a relational database for hospital operations. Conducted extensive demographics, appointment, and revenue analysis using SQL Window Functions and Joins.",
+    stack: ["MySQL", "Database Design", "Data Analytics"],
+    links: [
+      {
+        label: "→ View Queries",
+        href: "https://github.com/abhishek-200309/Hospital-Management/blob/master/project_analysis.sql",
+      },
+      {
+        label: "GitHub",
+        href: "https://github.com/abhishek-200309/Hospital-Management",
+        ghost: true,
+      },
+    ],
+    insights: {
+      overview:
+        "Architected a comprehensive relational database system to streamline hospital administration. The project focused on transforming raw operational data into actionable clinical and financial insights based on a 200-patient dataset.",
+      technologies: [
+        "MySQL for relational modeling and data storage",
+        "Complex Joins & CTEs for multi-table reporting",
+        "Window Functions for ranking doctor performance and revenue tracking",
+        "ER Diagramming for database normalization (3NF)",
+      ],
+      challenges:
+        'A key challenge was calculating "Patient Stay Duration" accurately while handling null discharge dates for currently admitted patients (20% of cases). This was solved using COALESCE with CURDATE(). Additionally, I implemented a robust billing logic that joins the Admission, Treatment, and Medical Test tables to compute accurate totals per patient stay.',
+      outcomes:
+        "Achieved a perfectly balanced 1:1 gender ratio across 200 patients. Successfully tracked 320 appointments and 140 admissions across 20 specialized departments. The analysis identified Jan-May 2025 as the busiest period, with a total hospital revenue of $2.32M and a 60% billing collection rate.",
+      dashboard: {
+        badge: "SQL",
+        heading: "Core Project Analytics",
+        gridSections: [
+          {
+            kind: "bars",
+            title: "Patient Gender Composition",
+            items: [
+              {
+                label: "MALE",
+                labelSuffix: "50%",
+                detail: "100 pts",
+                barPercent: 50,
+                tone: "accent",
+              },
+              {
+                label: "FEMALE",
+                labelSuffix: "50%",
+                detail: "100 pts",
+                barPercent: 50,
+                tone: "accent3",
+              },
+            ],
+            footnote:
+              "Derived from 200 patient registration records across the defined modulo logic.",
+          },
+          {
+            kind: "line",
+            title: "Monthly Admission Pipeline",
+            tone: "accent",
+            points: [
+              { label: "JAN", value: 31, displayValue: "31" },
+              { label: "FEB", value: 28, displayValue: "28" },
+              { label: "MAR", value: 31, displayValue: "31" },
+              { label: "APR", value: 30, displayValue: "30" },
+              { label: "MAY", value: 20, displayValue: "20" },
+            ],
+            footnote: "Trend analysis of 140 admissions (Q1-Q2 2025).",
+          },
+        ],
+        wideSections: [
+          {
+            kind: "bars",
+            title: "Top 5 Departments (Utilization)",
+            compact: true,
+            tone: "accent",
+            items: [
+              { label: "Cardiology", detail: "7 admissions", barPercent: 90 },
+              { label: "Neurology", detail: "7 admissions", barPercent: 90 },
+              { label: "Orthopedics", detail: "7 admissions", barPercent: 90 },
+              { label: "Pediatrics", detail: "7 admissions", barPercent: 90 },
+              { label: "Oncology", detail: "7 admissions", barPercent: 90 },
+            ],
+            footnote:
+              "Verification note: each of the 20 departments (Building A-T) reached peak consistency with 7 admissions each.",
+          },
+          {
+            kind: "line",
+            title: "Monthly Revenue Trends (2025)",
+            tone: "accent2",
+            points: [
+              { label: "JAN", value: 513, displayValue: "$513K" },
+              { label: "FEB", value: 464, displayValue: "$464K" },
+              { label: "MAR", value: 513, displayValue: "$513K" },
+              { label: "APR", value: 497, displayValue: "$497K" },
+              { label: "MAY", value: 331, displayValue: "$331K" },
+            ],
+            summary: [
+              { label: "Total Revenue", value: "$2,320,000", tone: "accent2" },
+              { label: "Collection Rate", value: "60.0%", tone: "accent" },
+            ],
+            footnote:
+              "Financial performance data aggregated across 140 admissions and outpatient billing.",
+          },
+        ],
+      },
+    },
+  },
+  
+
+];
+
+function MediaPreview({
+  pid,
+  mediaStore,
+  onClick,
+}: {
+  pid: number;
+  mediaStore: MediaStore;
+  onClick: () => void;
+}) {
+  const items = mediaStore[pid] ?? [];
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+
+  const handleMouseEnter = () => {
+    setIsPlaying(true);
+    videoRef.current?.play().catch(() => {});
+  };
+
+  const handleMouseLeave = () => {
+    setIsPlaying(false);
+    if (videoRef.current) {
+      videoRef.current.pause();
+      videoRef.current.currentTime = 0;
+    }
+  };
+
+  return (
+    <div
+      onClick={onClick}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+      className={`w-full aspect-video rounded-xl overflow-hidden bg-surface2 border border-border relative flex-shrink-0 group flex items-center justify-center ${items.length > 0 ? "cursor-pointer" : "cursor-default"}`}
+    >
+      {items.length === 0 ? (
+        <div className="w-full h-full flex flex-col items-center justify-center gap-1.5 text-text-dim">
+          <div className="text-[32px] opacity-30">🖼</div>
+          <span className="font-mono text-[10px] tracking-[0.06em]">
+            No media yet
+          </span>
+        </div>
+      ) : (
+        <>
+          {items[0].type === "video" ? (
+            <>
+              {items[0].poster && !isPlaying && (
+                <img
+                  src={items[0].poster}
+                  alt="thumbnail"
+                  onError={(event) => {
+                    event.currentTarget.style.display = "none";
+                  }}
+                  className="absolute inset-0 w-full h-full object-contain pointer-events-none transition-transform duration-300 group-hover:scale-[1.04] z-10"
+                />
+              )}
+              <video
+                ref={videoRef}
+                src={items[0].src}
+                loop
+                muted
+                playsInline
+                preload="auto"
+                controlsList="nodownload noplaybackrate"
+                disablePictureInPicture
+                className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+              />
+            </>
+          ) : (
+            <img
+              src={items[0].src}
+              alt="project screenshot"
+              className="w-full h-full object-contain transition-transform duration-300 group-hover:scale-[1.04]"
+            />
+          )}
+          {items.length > 1 && (
+            <div className="absolute bottom-2 right-2 bg-black/70 text-white font-mono text-[10px] px-2 py-0.5 rounded pointer-events-none">
+              +{items.length - 1} more
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+export default function Projects({
+  mediaStore,
+  isOwner,
+  onOpenLightbox,
+  onOpenManage,
+  onOpenInsights,
+  limit,
+  onViewAll,
+}: ProjectsProps) {
+  const displayedProjects = limit ? projects.slice(0, limit) : projects;
+
+  return (
+    <section
+      id="projects"
+      className="relative z-[1] py-24 px-12 max-w-[1200px] mx-auto transition-all duration-500"
+    >
+      <div className="flex justify-between items-end mb-0">
+        <div>
+          <div className="section-label">Selected work</div>
+          <h2 className="font-serif text-[clamp(18px,3.5vw,48px)] leading-[1.1] tracking-[-0.01em] mb-0">
+            {limit ? "Featured Projects" : "All Projects"}
+          </h2>
+        </div>
+        {isOwner ? (
+          <div className="font-mono text-[12px] text-text-muted text-right leading-[1.7] pb-1.5 hidden md:block">
+            Click <span className="text-accent">+ Add Media</span> on any card
+            <br />
+            to upload screenshots or videos
+          </div>
+        ) : (
+          <div className="font-mono text-[12px] text-text-muted text-right leading-[1.7] pb-1.5 hidden md:block">
+            Projects showcase <span className="text-accent">real analysis</span>
+            <br />
+            and interactive dashboards
+          </div>
+        )}
+      </div>
+
+      <div className="h-8" />
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+        {displayedProjects.map((project, index) => (
+          <div
+            key={project.id}
+            data-pid={project.id}
+            className={`project-card bg-surface border border-border rounded-2xl p-8 flex flex-col gap-4 transition-all duration-300 relative overflow-hidden hover:border-accent/30 hover:-translate-y-1 hover:scale-[1.02] fade-up visible`}
+            style={{ animationDelay: `${index * 0.1}s` }}
+          >
+            <div className="flex items-center gap-3">
+              <div
+                className={`w-11 h-11 rounded-[10px] flex items-center justify-center text-[20px] flex-shrink-0 ${project.iconClass}`}
+              >
+                {project.icon}
+              </div>
+              <span className="font-mono text-[10px] text-text-dim tracking-[0.08em] uppercase">
+                {project.tag}
+              </span>
+            </div>
+
+            <div className="font-serif text-[22px] text-text leading-[1.2]">
+              {project.name}
+            </div>
+
+            <p className="text-text-muted text-[14px] leading-[1.7] flex-1">
+              {project.desc}
+            </p>
+
+            <div className="flex flex-wrap gap-1.5">
+              {project.stack.map((item) => (
+                <span key={item} className="stack-pill">
+                  {item}
+                </span>
+              ))}
+            </div>
+
+            <div className="relative z-10 flex items-center gap-3 mt-1 w-full justify-between">
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex gap-3">
+                  {project.links.map((link) => (
+                    <a
+                      key={link.label}
+                      href={link.href}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`project-link ${link.ghost ? "text-text-muted" : ""}`}
+                    >
+                      {link.label}
+                    </a>
+                  ))}
+                </div>
+                {isOwner && (
+                  <button
+                    onClick={() => onOpenManage(project.id, project.name)}
+                    className="inline-flex items-center gap-1.5 font-mono text-[11px] text-accent bg-accent/[0.08] border border-accent/20 rounded-md px-3 py-1.5 cursor-pointer transition-all duration-200 tracking-[0.04em] hover:bg-accent/[0.14] hover:border-accent/40"
+                  >
+                    + Add Media
+                  </button>
+                )}
+              </div>
+              <button
+                onClick={() => onOpenInsights(project.id)}
+                className="ml-auto inline-flex items-center gap-2 font-mono text-[11px] text-text rounded-full px-3 py-1.5 bg-white/5 hover:bg-white/10 border border-white/5 hover:border-white/20 transition-all duration-300"
+              >
+                Insights <span className="opacity-70">✦</span>
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {limit && onViewAll && (
+        <div
+          className="mt-16 flex justify-center animate-fade-in"
+          style={{ animationDelay: "0.4s" }}
+        >
+          <button
+            onClick={onViewAll}
+            className="group relative inline-flex items-center gap-3 bg-surface border border-border px-8 py-4 rounded-full font-mono text-[13px] tracking-[0.05em] text-text hover:border-accent/50 transition-all duration-300 hover:-translate-y-1 shadow-lg hover:shadow-accent/10"
+          >
+            <span className="relative z-10 uppercase">View All Projects</span>
+            <span className="relative z-10 text-accent group-hover:translate-x-1 transition-transform duration-300">
+              →
+            </span>
+            <div className="absolute inset-0 rounded-full bg-gradient-to-r from-accent/5 to-accent2/5 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export { projects };
