@@ -1,8 +1,4 @@
 export default function Contact() {
-
-  const handleDownload = () => {
-  
-}
   return (
     <section
       id="contact"

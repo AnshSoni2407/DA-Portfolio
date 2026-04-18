@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import type { Project } from './Projects';
 import type { MediaItem } from '../types';
 import InsightDashboard from './InsightDashboard';
@@ -9,7 +9,7 @@ interface Props {
   onClose: () => void;
 }
 
-export default function ProjectInsights({ project, media = [], onClose }: Props) {
+export default function ProjectInsights({ project, media = [] }: Props) {
   const [enlargedItem, setEnlargedItem] = useState<MediaItem | null>(null);
 
   if (!project.insights) return null;
