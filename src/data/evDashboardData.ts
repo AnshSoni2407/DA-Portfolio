@@ -642,6 +642,7 @@ export const evProjectDashboard: ProjectDashboard = {
           title: "EV Adoption Trend (2015-2024)",
           tone: variant.tone,
           xAxisLabel: "Years",
+          yAxisMilestones: [0, 50000, 100000, 500000, 1000000, 1500000, 2000000],
           points: buildLinePoints(summary.trends[variant.totalKey]),
           footnote: buildTrendFootnote(selectedState),
         },

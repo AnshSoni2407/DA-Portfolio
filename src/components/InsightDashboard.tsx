@@ -13,6 +13,7 @@ import type {
   ProjectLinePoint,
   ProjectLineSection,
   ProjectMetric,
+  ProjectDashboardVariant,
 } from './Projects';
 
 const tonePalette: Record<AccentTone, { hex: string; soft: string; dim: string }> = {
@@ -38,12 +39,12 @@ const tonePalette: Record<AccentTone, { hex: string; soft: string; dim: string }
   },
 };
 
-const CHART_WIDTH = 700;
-const CHART_HEIGHT = 870;
-const PLOT_LEFT = 10;
-const PLOT_RIGHT = 670;
+const CHART_WIDTH = 1000;
+const CHART_HEIGHT = 400;
+const PLOT_LEFT = 20;
+const PLOT_RIGHT = 960;
 const PLOT_TOP = 40;
-const BASELINE_Y = 870;
+const BASELINE_Y = 360;
 type ChartPoint = ProjectLinePoint & { x: number; y: number };
 
 const standardNumberFormatter = new Intl.NumberFormat('en-IN', {
@@ -68,7 +69,18 @@ function formatChartNumber(value: number) {
   return chartNumberFormatter.format(value);
 }
 
-function buildAxisConfig(values: number[]) {
+function getNiceAxisStep(rawStep: number) {
+  if (rawStep <= 0) return 1;
+  const magnitude = 10 ** Math.floor(Math.log10(rawStep));
+  const normalized = rawStep / magnitude;
+  if (normalized <= 1) return magnitude;
+  if (normalized <= 2) return 2 * magnitude;
+  if (normalized <= 3) return 2.5 * magnitude;
+  if (normalized <= 7) return 5 * magnitude;
+  return 10 * magnitude;
+}
+
+function buildAxisConfig(values: number[], customMilestones?: number[]) {
   const maxValue = Math.max(...values, 0);
   
   if (maxValue <= 0) {
@@ -76,27 +88,39 @@ function buildAxisConfig(values: number[]) {
       axisMax: 1,
       labels: ['1', '0'],
       lineYs: [PLOT_TOP, BASELINE_Y],
+      activeMilestones: [1, 0]
     };
   }
 
-  // Milestones requested by the user for perfect vertical spacing
-  const milestones = [0, 50000, 100000, 500000, 1000000, 1500000, 2000000];
-  const axisMax = milestones.find(m => m >= maxValue) || 2000000;
-  
-  // Use milestones only up to axisMax
-  const activeMilestones = milestones.filter(m => m <= axisMax);
-  activeMilestones.sort((a, b) => b - a);
+  let axisMax: number;
+  let activeMilestones: number[];
+
+  if (customMilestones && customMilestones.length > 0) {
+    axisMax = customMilestones.find(m => m >= maxValue) ?? customMilestones[customMilestones.length - 1];
+    activeMilestones = customMilestones.filter(m => m <= axisMax);
+    activeMilestones.sort((a, b) => b - a);
+  } else {
+    const targetTickCount = 5;
+    const rawStep = maxValue / (targetTickCount - 1);
+    const step = getNiceAxisStep(rawStep);
+    axisMax = step * (targetTickCount - 1);
+    
+    activeMilestones = [];
+    for (let i = targetTickCount - 1; i >= 0; i--) {
+      activeMilestones.push(i * step);
+    }
+  }
 
   const labels: string[] = [];
   const lineYs: number[] = [];
 
-  // Each segment between milestones takes an equal visual share of the height
   const segmentCount = activeMilestones.length - 1;
   const heightPerSegment = (BASELINE_Y - PLOT_TOP) / segmentCount;
 
   activeMilestones.forEach((val, index) => {
     let label = '';
     if (val === 0) label = '0';
+    else if (val < 1000) label = val.toString();
     else if (val < 100000) label = `${val / 1000}K`;
     else label = `${val / 100000}L`;
 
@@ -112,22 +136,16 @@ function buildAxisConfig(values: number[]) {
   };
 }
 
-function getChartPoints(points: ProjectLinePoint[], axisMax: number): ChartPoint[] {
+function getChartPoints(points: ProjectLinePoint[], activeMilestonesDescending: number[]): ChartPoint[] {
   const stepX = points.length > 1 ? (PLOT_RIGHT - PLOT_LEFT) / (points.length - 1) : 0;
   
-  // Milestones (must match buildAxisConfig)
-  const milestones = [0, 50000, 100000, 500000, 1000000, 1500000, 2000000];
-  const activeMilestones = milestones.filter(m => m <= axisMax);
-  // Sort ascending for easier segment calculation: [0, 50k, 1L, 5L, 10L, 15L, 20L]
-  activeMilestones.sort((a, b) => a - b);
-  
+  const activeMilestones = [...activeMilestonesDescending].sort((a, b) => a - b);
   const segmentCount = activeMilestones.length - 1;
   const heightPerSegment = (BASELINE_Y - PLOT_TOP) / segmentCount;
 
   return points.map((point, index) => {
     const val = Math.max(point.value, 0);
     
-    // Find which segment the value falls into
     let segmentIndex = 0;
     for (let i = 0; i < activeMilestones.length - 1; i++) {
       if (val >= activeMilestones[i] && val <= activeMilestones[i+1]) {
@@ -136,9 +154,6 @@ function getChartPoints(points: ProjectLinePoint[], axisMax: number): ChartPoint
       }
     }
     
-    // For ascending activeMilestones:
-    // [0, 50k, 1L, 5L, 10L, 15L, 20L]
-    // index 0: 0 to 50k, index 1: 50k to 1L ...
     const botVal = activeMilestones[segmentIndex];
     const topVal = activeMilestones[segmentIndex + 1];
     
@@ -147,7 +162,6 @@ function getChartPoints(points: ProjectLinePoint[], axisMax: number): ChartPoint
       ratioInSegment = (val - botVal) / (topVal - botVal);
     }
 
-    // Y position: Start from bottom of the chart area and go UP
     const segmentBottomY = BASELINE_Y - segmentIndex * heightPerSegment;
     const y = segmentBottomY - ratioInSegment * heightPerSegment;
 
@@ -271,8 +285,8 @@ function BarsSection({ section }: { section: ProjectBarSection }) {
 function LineSection({ section }: { section: ProjectLineSection }) {
   const gradientId = useId().replace(/:/g, '');
   const tone = getTone(section.tone ?? 'accent');
-  const axisConfig = buildAxisConfig(section.points.map((point) => point.value));
-  const chartPoints = getChartPoints(section.points, axisConfig.axisMax);
+  const axisConfig = buildAxisConfig(section.points.map((point) => point.value), section.yAxisMilestones);
+  const chartPoints = getChartPoints(section.points, axisConfig.activeMilestones);
   const linePath = buildLinePath(chartPoints);
   const areaPath = buildAreaPath(chartPoints);
   const customYAxisLabels = section.yAxisLabels;
@@ -735,8 +749,10 @@ function renderSection(section: ProjectDashboardSection) {
   }
 }
 
+const EMPTY_VARIANTS: ProjectDashboardVariant[] = [];
+
 export default function InsightDashboard({ dashboard }: { dashboard: ProjectDashboard }) {
-  const variants = dashboard.variants ?? [];
+  const variants = dashboard.variants ?? EMPTY_VARIANTS;
   const [activeVariantKey, setActiveVariantKey] = useState(() => variants[0]?.key ?? 'default');
   const stateFilter = dashboard.stateFilter;
   const [selectedState, setSelectedState] = useState(
@@ -752,7 +768,6 @@ export default function InsightDashboard({ dashboard }: { dashboard: ProjectDash
       fallbackContent,
     }) ?? fallbackContent;
   const scopeLabel = selectedState === 'All' ? 'All states' : selectedState;
-  const allSections = [...(content.wideSections ?? []), ...(content.gridSections ?? [])];
 
   const { showDashboardFilters, setShowDashboardFilters, setDashboardContent } = useHeader();
   const sentinelRef = useRef<HTMLDivElement>(null);
@@ -843,16 +858,55 @@ export default function InsightDashboard({ dashboard }: { dashboard: ProjectDash
       )}
       {content.metrics && content.metrics.length > 0 && <MetricsGrid metrics={content.metrics} />}
 
-      <div className={`grid grid-cols-1 gap-4 lg:gap-6 ${
-        allSections.length >= 3 ? 'lg:grid-cols-3' : 
-        allSections.length === 2 ? 'md:grid-cols-2' : ''
-      }`}>
-        {allSections.map((section) => (
-          <div key={section.kind + section.title} className="h-full">
-            {renderSection(section)}
-          </div>
-        ))}
-      </div>
+      {content.layout === 'wide-first' ? (
+        <div className="space-y-4 lg:space-y-6">
+          {content.wideSections && content.wideSections.length > 0 && (
+            <div className="flex flex-col gap-4 lg:gap-6">
+              {content.wideSections.map((section) => (
+                <div key={section.kind + section.title}>
+                  {renderSection(section)}
+                </div>
+              ))}
+            </div>
+          )}
+          {content.gridSections && content.gridSections.length > 0 && (
+            <div className={`grid grid-cols-1 gap-4 lg:gap-6 ${
+              content.gridSections.length >= 3 ? 'lg:grid-cols-3' : 
+              content.gridSections.length === 2 ? 'md:grid-cols-2' : ''
+            }`}>
+              {content.gridSections.map((section) => (
+                <div key={section.kind + section.title} className="h-full">
+                  {renderSection(section)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="space-y-4 lg:space-y-6">
+          {content.gridSections && content.gridSections.length > 0 && (
+            <div className={`grid grid-cols-1 gap-4 lg:gap-6 ${
+              content.gridSections.length >= 3 ? 'lg:grid-cols-3' : 
+              content.gridSections.length === 2 ? 'md:grid-cols-2' : ''
+            }`}>
+              {content.gridSections.map((section) => (
+                <div key={section.kind + section.title} className="h-full">
+                  {renderSection(section)}
+                </div>
+              ))}
+            </div>
+          )}
+          {content.wideSections && content.wideSections.length > 0 && (
+            <div className="flex flex-col gap-4 lg:gap-6">
+              {content.wideSections.map((section) => (
+                <div key={section.kind + section.title}>
+                  {renderSection(section)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
     </section>
   );
 }

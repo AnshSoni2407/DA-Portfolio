@@ -80,6 +80,7 @@ export interface ProjectLineSection extends ProjectDashboardSectionBase {
   summary?: ProjectLineSummary[];
   xAxisLabel?: string;
   yAxisLabels?: string[];
+  yAxisMilestones?: number[];
 }
 
 export interface ProjectColumnDatum {
